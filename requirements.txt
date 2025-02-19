@@ -1,6 +1,9 @@
 streamlit
-matplotlib
 pandas
-joblib
-scikit-learn
 numpy
+matplotlib
+plotly
+PyPDF2
+joblib
+tabula-py
+camelot-py
