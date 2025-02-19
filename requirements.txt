@@ -7,3 +7,5 @@ PyPDF2
 joblib
 tabula-py
 camelot-py
+xlrd
+
