@@ -13,6 +13,7 @@ import camelot
 
 # 🎨 Apply Background Image
 def add_bg_from_url():
+    st.set_page_config(layout="wide")
     st.markdown(
     """
     <style>
