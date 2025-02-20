@@ -9,3 +9,6 @@ tabula-py
 camelot-py
 xlrd
 scikit-learn
+openpyxl
+xlrd==2.0.1
+pyxlsb
