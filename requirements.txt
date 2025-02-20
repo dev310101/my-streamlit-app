@@ -9,4 +9,4 @@ tabula-py
 camelot-py
 xlrd
 scikit-learn
-pandas openpyxl xlrd==2.0.1 pyxlsb
+xlrd==2.0.1 --upgrade
