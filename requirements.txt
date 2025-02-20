@@ -10,5 +10,5 @@ camelot-py
 xlrd
 scikit-learn
 openpyxl
-upgrade xlrd==2.0.1
+xlrd>=2.0.1
 pyxlsb
