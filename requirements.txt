@@ -8,4 +8,5 @@ joblib
 tabula-py
 camelot-py
 xlrd
+scikit-learn
 
