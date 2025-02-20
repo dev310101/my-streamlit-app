@@ -123,7 +123,19 @@ else:
 # Function to read Excel data
 def read_excel(file):
     try:
-        df = pd.read_excel(file)
+        if uploaded_file.name.endswith(".xls"):
+            df = pd.read_excel(file,engine="xlrd")
+        elif uploaded_file.name.endswith(".xlsx"):
+            df = pd.read_excel(uploaded_file, engine="openpyxl")
+        elif uploaded_file.name.endswith(".xlsb"):
+            df = pd.read_excel(uploaded_file, engine="pyxlsb")
+        elif uploaded_file.name.endswith(".csv"):
+            df = pd.read_csv(uploaded_file)
+        elif uploaded_file.name.endswith(".xls"):
+            df = pd.read_csv(uploaded_file, engine="")
+        else:
+            st.error("Unsupported file format! Please upload an Excel or CSV file.")
+            return None
         return df
     except Exception as e:
         st.error(f"Error reading Excel file: {e}")
@@ -220,11 +232,11 @@ if uploaded_file:
     file_type = uploaded_file.name.split(".")[-1].lower()
 
     if file_type == "xlsx" or file_type == "xls":
-        df = read_excel(uploaded_file)
+        df = pd.read_excel(uploaded_file)
         df_cleaned = clean_excel_data(df)
         if df is not None:
             ##Invoke model with df_cleaned
-            model_path = "trained_model_balanced.joblib"
+            model_path = r"C:\Users\ashpa\OneDrive\Desktop\project\trained_model_balanced.joblib"
             if not os.path.exists(model_path):
                 st.error("Error: Trained model not found.")
 
