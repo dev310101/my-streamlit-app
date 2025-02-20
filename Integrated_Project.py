@@ -224,7 +224,7 @@ if uploaded_file:
         df_cleaned = clean_excel_data(df)
         if df is not None:
             ##Invoke model with df_cleaned
-            model_path = r"C:\Users\ashpa\OneDrive\Desktop\project\trained_model_balanced.joblib"
+            model_path = "trained_model_balanced.joblib"
             if not os.path.exists(model_path):
                 st.error("Error: Trained model not found.")
 
