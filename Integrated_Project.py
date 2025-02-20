@@ -15,17 +15,24 @@ import camelot
 def add_bg_from_url():
     st.set_page_config(layout="wide")
     st.markdown(
-    """
-    <style>
-    .main > div {
-        max-width: 2200%;
-        padding-left: 0rem;
-        padding-right: 0rem;
-    }
-    .stApp {
-        margin: 0 auto;
-        max-width: 200%;
-    }
+        """
+        <style>
+        [theme]
+        base="light"
+        primaryColor="#f4d03f"  # Gold color
+        backgroundColor="#ffffff"  # White background
+        secondaryBackgroundColor="#f8f9fa"  # Light gray
+        textColor="#000000"  # Black text
+        font="sans serif"
+        .main > div {
+            max-width: 2200%;
+            padding-left: 0rem;
+            padding-right: 0rem;
+        }
+        .stApp {
+            margin: 0 auto;
+            max-width: 200%;
+        }
         .stApp {
             background: url("https://source.unsplash.com/1600x900/?finance,stocks,money") no-repeat center fixed;
             background-size: cover;
@@ -38,9 +45,6 @@ def add_bg_from_url():
             font-weight: bold;
             text-align: center;
             font-size: 2rem;
-        }
-        .stSidebar {
-            background-color: light !important;
         }
         .stButton > button {
             background-color: #f4d03f !important; /* Gold */
@@ -114,48 +118,7 @@ if not st.session_state.privacy_accepted:
     privacy_notice()
 else:
     # Main app content
-    st.markdown('<h1 class="stTitle">💰 AI-Powered Personal Finance Tool </h1>', unsafe_allow_html=True)
-
-
-# Function to unlock PDF
-def unlock_pdf(input_pdf_path, output_pdf_path):
-    try:
-        with open(input_pdf_path, 'rb') as file:
-            pdf_reader = PyPDF2.PdfReader(file)
-            if pdf_reader.is_encrypted:
-                password = st.text_input("Enter PDF password:", type="password")
-                if pdf_reader.decrypt(password):
-                    pdf_writer = PyPDF2.PdfWriter()
-                    for page in pdf_reader.pages:
-                        pdf_writer.add_page(page)
-                    with open(output_pdf_path, 'wb') as output_file:
-                        pdf_writer.write(output_file)
-                    st.success("PDF successfully unlocked!")
-                    return output_pdf_path
-                else:
-                    st.error("Incorrect password.")
-                    return None
-            else:
-                return input_pdf_path
-    except Exception as e:
-        st.error(f"Error unlocking PDF: {e}")
-        return None
-
-# Function to extract tables from PDF
-def extract_pdf_table(pdf_path):
-    try:
-        #tables = read_pdf(pdf_path, pages='all', multiple_tables=True, lattice=True)
-        tables = camelot.read_pdf(pdf_path, pages="all")    
-        if tables:
-            st.success("Table extracted successfully!")
-            df = pd.concat([table.df for table in tables], ignore_index=True)
-            return df
-        else:
-            st.error("No table found in the PDF.")
-            return None
-    except Exception as e:
-        st.error(f"Error extracting table: {e}")
-        return None
+    st.markdown('<h1 class="stTitle">💰 AI-Powered Personal Finance Tool</h1>', unsafe_allow_html=True)
 
 # Function to read Excel data
 def read_excel(file):
@@ -169,20 +132,21 @@ def read_excel(file):
 # Function to clean text from Excel
 def clean_excel_data(df):
     try:
-        df.replace('0',np.nan,inplace=True)
-        df.replace(r"\*+",np.nan,regex=True,inplace=True)
-        df.dropna(thresh=np.ceil(len(df.columns)*0.75),axis=0,inplace=True)
-        words_to_filter = ["Generated", "Branch",'Opening']
+        df.replace('0', np.nan, inplace=True)
+        df.replace(r"\*+", np.nan, regex=True, inplace=True)
+        df.dropna(thresh=np.ceil(len(df.columns) * 0.75), axis=0, inplace=True)
+        words_to_filter = ["Generated", "Branch", 'Opening']
         mask = ~df.apply(lambda row: row.astype(str).str.contains('|'.join(words_to_filter), case=False).any(), axis=1)
-        df_filtered=df[mask]
-        df_filtered.reset_index(drop=True,inplace=True)
-        df_filtered.columns=df_filtered.loc[0,:]
-        df_filtered=df_filtered.drop(0,axis=0)
+        df_filtered = df[mask]
+        df_filtered.reset_index(drop=True, inplace=True)
+        df_filtered.columns = df_filtered.loc[0, :]
+        df_filtered = df_filtered.drop(0, axis=0)
         return df_filtered
     except Exception as e:
         st.error(f"Error cleaning Excel file: {e}")
-        return None   
+        return None
 
+# Function to classify transactions
 def classify_transactions(dataframe, model_path):
     try:
         loaded_model = joblib.load(model_path)
@@ -192,7 +156,7 @@ def classify_transactions(dataframe, model_path):
             dataframe['Predicted Category'] = predictions
             if 'Credit' in dataframe.columns:
                 dataframe.loc[dataframe['Credit'] > 0, 'Predicted Category'] = 'Income'
-            return dataframe[['Transaction Description','Predicted Category']]
+            return dataframe[['Transaction Description', 'Predicted Category']]
         else:
             st.error("Error: 'Transaction Description' column missing in dataframe.")
             return dataframe
@@ -204,50 +168,12 @@ def classify_transactions(dataframe, model_path):
         return dataframe
 
 # Function to apply budget rule
-def apply_budget_rule(dataframe, selected_month, selected_year, income):
-    try:
-        dataframe = dataframe[((dataframe['Transaction Month'] == selected_month) & (dataframe['Transaction Year'] == selected_year))]
-        dataframe['Credit'] = pd.to_numeric(dataframe['Credit'], errors='coerce')
-        dataframe['Debit'] = pd.to_numeric(dataframe['Debit'], errors='coerce')
-
-        if income<=0:
-            income_total = dataframe[dataframe['Reviewed Category'].str.lower() == 'income']['Credit'].sum()
-        else:
-            income_total = income
-
-        needs_percent = 50
-        wants_percent = 30
-        savings_debts_percent = 20
-
-        needs_limit = (needs_percent / 100) * income_total
-        wants_limit = (wants_percent / 100) * income_total
-        savings_debts_limit = (savings_debts_percent / 100) * income_total
-
-        needs_total = dataframe[dataframe['Reviewed Category'].str.lower() == 'needs']['Debit'].sum()
-        wants_total = dataframe[dataframe['Reviewed Category'].str.lower() == 'wants']['Debit'].sum()
-        savings_debts_total = dataframe[dataframe['Reviewed Category'].str.lower() == 'savings']['Debit'].sum()
-
-        st.write(f"Income: ₹{income_total}")
-        st.write(f"\nExpense Breakdown for {selected_month},{selected_year}:")
-        st.write(f"Needs: ₹{needs_total:.2f} / ₹{needs_limit:.2f}")
-        st.write(f"Wants: ₹{wants_total:.2f} / ₹{wants_limit:.2f}")
-        st.write(f"Savings & Debts: ₹{savings_debts_total:.2f} / ₹{savings_debts_limit:.2f}")
-
-        if needs_total > needs_limit:
-            st.warning(f"Warning: Your 'Needs' expenses have exceeded the limit by ₹{needs_total - needs_limit:.2f}")
-        if wants_total > wants_limit:
-            st.warning(f"Warning: Your 'Wants' expenses have exceeded the limit by ₹{wants_total - wants_limit:.2f}")
-        if savings_debts_total > savings_debts_limit:
-            st.warning(f"Warning: Your 'Savings & Debts' have exceeded the limit by ₹{savings_debts_total - savings_debts_limit:.2f}")
-    except Exception as e:
-        st.error(f"An error occurred during budget rule application: {e}")
-
 def apply_budget_rule2(dataframe, income):
     try:
         dataframe['Credit'] = pd.to_numeric(dataframe['Credit'], errors='coerce')
         dataframe['Debit'] = pd.to_numeric(dataframe['Debit'], errors='coerce')
 
-        if income<=0:
+        if income <= 0:
             income_total = dataframe[dataframe['Reviewed Category'].str.lower() == 'income']['Credit'].sum()
         else:
             income_total = income
@@ -265,25 +191,30 @@ def apply_budget_rule2(dataframe, income):
         savings_debts_total = dataframe[dataframe['Reviewed Category'].str.lower() == 'savings']['Debit'].sum()
 
         st.write(f"Income: ₹{income_total}")
+        st.write (f'from **{start_month} {start_year}** to **{end_month} {end_year}**, you have earned  {income_total:,.2f}')
         st.write(f"Needs: ₹{needs_total:.2f} / ₹{needs_limit:.2f}")
+        st.write(f'Based on the provided income, the total expected expenses for Needs should be ₹{needs_limit:.2f}, and you spent ₹{needs_total:.2f}.')
         st.write(f"Wants: ₹{wants_total:.2f} / ₹{wants_limit:.2f}")
+        st.write(f'Based on the provided income, the total expected expenses for Wants should be ₹{wants_limit:.2f}, and you spent ₹{wants_total:.2f}.')
         st.write(f"Savings: ₹{savings_debts_total:.2f} / ₹{savings_debts_limit:.2f}")
+        st.write(f'Based on the provided income, the total expected Saving should be ₹{savings_debts_limit:.2f}, and you spent  ₹{savings_debts_total:.2f}.')
 
         # Check for exceeded limits
         if needs_total > needs_limit:
-            st.warning(f"Warning: Your 'Needs' expenses have exceeded the limit by ₹{needs_total - needs_limit:.2f}",icon= '⚠')
+            
+            st.warning(f"Warning: Your 'Needs' expenses have exceeded the limit by ₹{needs_total - needs_limit:.2f}", icon='⚠')
         if wants_total > wants_limit:
-            st.warning(f"Warning: Your 'Wants' expenses have exceeded the limit by ₹{wants_total - wants_limit:.2f}",icon= '⚠')
+            
+            st.warning(f"Warning: Your 'Wants' expenses have exceeded the limit by ₹{wants_total - wants_limit:.2f}", icon='⚠')
         if savings_debts_total > savings_debts_limit:
             st.balloons()
-            st.success(f"Congratulations: Your 'Savings' have exceeded the limit by ₹{savings_debts_total - savings_debts_limit:.2f}",icon= '🎉')
+            
+            st.success(f"Congratulations: Your 'Savings' have exceeded the limit by ₹{savings_debts_total - savings_debts_limit:.2f}", icon='🎉')
     except Exception as e:
         st.error(f"An error occurred during budget rule application: {e}")
 
-# App Title
-#st.title("AI-Powered Personal Finance Tool")
-st.sidebar.header("📂 Upload Your File")
-uploaded_file = st.sidebar.file_uploader("Upload an Excel", type=["xls","xlsx"])
+# File Uploader on Main Page
+uploaded_file = st.file_uploader("📂 Upload Your File (Excel or PDF)", type=["xls", "xlsx", "pdf"])
 
 if uploaded_file:
     file_type = uploaded_file.name.split(".")[-1].lower()
@@ -293,7 +224,7 @@ if uploaded_file:
         df_cleaned = clean_excel_data(df)
         if df is not None:
             ##Invoke model with df_cleaned
-            model_path = "trained_model_balanced.joblib"
+            model_path = r"C:\Users\ashpa\OneDrive\Desktop\project\trained_model_balanced.joblib"
             if not os.path.exists(model_path):
                 st.error("Error: Trained model not found.")
 
@@ -314,48 +245,35 @@ if uploaded_file:
             # Apply renaming
             df_cleaned = df_cleaned.rename(columns=rename_dict)
 
-            df_predicted = classify_transactions(df_cleaned[['Transaction Description','Credit']], model_path)
-            df_cleaned=df_cleaned.merge(df_predicted, on="Transaction Description", how="left")
-            df_cleaned['Reviewed Category']=df_cleaned['Predicted Category'] ##will be equated with Predicted Category column.
-            #creating month and year columns from Date:
-            #Getting first column containing 'Date':
-            date_col = next((col for col in df_cleaned.columns if 'Date' in col), None)
+            df_predicted = classify_transactions(df_cleaned[['Transaction Description', 'Credit']], model_path)
+            df_cleaned = df_cleaned.merge(df_predicted, on="Transaction Description", how="left")
+            df_cleaned['Reviewed Category'] = df_cleaned['Predicted Category']  # Will be equated with Predicted Category column.
 
+            # Creating month and year columns from Date:
+            date_col = next((col for col in df_cleaned.columns if 'Date' in col), None)
             if date_col:
                 # Convert to datetime format
                 df_cleaned["Transaction Year"] = pd.to_datetime(df_cleaned[date_col], format="%d/%m/%y").dt.year
                 df_cleaned["Transaction Month"] = pd.to_datetime(df_cleaned[date_col], format="%d/%m/%y").dt.strftime("%B")
 
-            #Code to let user change category:
+            # Code to let user change category:
             editable_column = "Reviewed Category"
             category_options = ["Savings", "Wants", "Needs"]
 
             # Dynamically configure columns: All read-only except the editable one
             column_config = {col: st.column_config.TextColumn(col, disabled=True) for col in df_cleaned.columns}
             column_config[editable_column] = st.column_config.SelectboxColumn(editable_column, options=category_options)
-            
 
             st.subheader("Uploaded Data")
-            #columns to hide:
-            columns_to_hide = ["Transaction Year", "Transaction Month",'Closing Balance','Value Dt','Chq./Ref.No.']
+            # Columns to hide:
+            columns_to_hide = ["Transaction Year", "Transaction Month", 'Closing Balance', 'Value Dt', 'Chq./Ref.No.']
             # Display DataFrame with only one editable dropdown column
-            edited_df = st.data_editor(df_cleaned.drop(columns=columns_to_hide), column_config=column_config, num_rows="fixed",use_container_width=True, height=500)
-            #st.dataframe(edited_df.style.set_properties(**{"background-color": "gray", "color": "black"}))
+            edited_df = st.data_editor(df_cleaned.drop(columns=columns_to_hide), column_config=column_config, num_rows="fixed", use_container_width=True, height=500)
             for col in columns_to_hide:
                 edited_df[col] = df_cleaned[col]
 
             # Budget Rule Application
             st.header("Budget Rule Application")
-            #months = list(calendar.month_name)[1:]
-            #selected_month = st.sidebar.selectbox("Select a Month", months)
-            #selected_year = st.sidebar.number_input("Select Year:", value=2024)
-            #income = st.sidebar.number_input("Enter Monthly Income (optional):", value=0)
-
-            #if st.sidebar.button("Apply Budget Rule"):
-                #apply_budget_rule(df_cleaned, selected_month, selected_year, income)
-
-            ##Budget Application Code 2:
-            # Month and Year selection
             months = list(calendar.month_name)[1:]  # ['January', 'February', ..., 'December']
             years = sorted(edited_df["Transaction Year"].unique())  # Get unique years in sorted order
 
@@ -373,19 +291,18 @@ if uploaded_file:
             start_month_num = month_to_num[start_month]
             end_month_num = month_to_num[end_month]
             year_month_df = edited_df[
-                    ((edited_df["Transaction Year"] > start_year) | ((edited_df["Transaction Year"] == start_year) & (edited_df["Transaction Month"].map(month_to_num) >= start_month_num))) &
-                    ((edited_df["Transaction Year"] < end_year) | ((edited_df["Transaction Year"] == end_year) & (edited_df["Transaction Month"].map(month_to_num) <= end_month_num)))
-                ]
+                ((edited_df["Transaction Year"] > start_year) | ((edited_df["Transaction Year"] == start_year) & (edited_df["Transaction Month"].map(month_to_num) >= start_month_num))) &
+                ((edited_df["Transaction Year"] < end_year) | ((edited_df["Transaction Year"] == end_year) & (edited_df["Transaction Month"].map(month_to_num) <= end_month_num)))
+            ]
 
             if st.button("Apply Budgeting Rule"):
-                #st.write(year_month_df)
                 st.write(f"Expense Breakdown for **{start_month} {start_year}** to **{end_month} {end_year}**")
                 apply_budget_rule2(year_month_df, income2)
 
             year_month_df['Credit'] = pd.to_numeric(year_month_df['Credit'], errors='coerce')
             year_month_df['Debit'] = pd.to_numeric(year_month_df['Debit'], errors='coerce')
             st.header("🔍 Visualizations:")
-            col1, col2 = st.columns([1, 2]) 
+            col1, col2 = st.columns([1, 2])
             with col1:
                 # Select column to group by
                 st.write('\n')
@@ -401,13 +318,13 @@ if uploaded_file:
                 # Select chart type
                 chart_type = st.selectbox("📊 Select Chart Type", ["Bar Chart", "Pie Chart", "Line Chart"])
             with col2:
-                # 🎯 Perform Aggregation
+                # Perform Aggregation
                 if agg_function == "Sum":
                     df_agg = year_month_df.groupby(group_column, as_index=False)[agg_column].sum()
                 else:  # Count
                     df_agg = year_month_df.groupby(group_column, as_index=False)[agg_column].count()
 
-                # 🎯 Create Visualization based on selected chart type
+                # Create Visualization based on selected chart type
                 if chart_type == "Bar Chart":
                     fig = px.bar(df_agg, x=group_column, y=agg_column, text_auto=True, title=f"{agg_function} of {agg_column} by {group_column}")
                 elif chart_type == "Pie Chart":
@@ -415,15 +332,10 @@ if uploaded_file:
                 else:  # Line Chart
                     fig = px.line(df_agg, x=group_column, y=agg_column, markers=True, title=f"{agg_function} of {agg_column} by {group_column}")
 
-                # 🎯 Display Outputs
+                # Display Outputs
                 st.plotly_chart(fig)
 
     elif file_type == "pdf":
-        #unlocked_pdf_path = "unlocked_statement.pdf"
-        #unlocked_pdf = unlock_pdf(uploaded_file.name, unlocked_pdf_path)
-        #if unlocked_pdf:
-            #df = extract_pdf_table(unlocked_pdf)
-        #st.write(df)
         st.warning("🔔 PDF processing is under development.")
 else:
-    st.info("📢 Please upload a file to get started!")    
+    st.info("📢 Please upload a file to get started!")
