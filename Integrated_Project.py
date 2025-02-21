@@ -34,7 +34,7 @@ def add_bg_from_url():
             max-width: 200%;
         }
         .stApp {
-            background: url("https://images.unsplash.com/photo-1704402191042-4d6461fc8e58") no-repeat center fixed;
+            background: url("https://source.unsplash.com/1600x900/?finance,stocks,money") no-repeat center fixed;
             background-size: cover;
         }
         .css-18e3th9 {
@@ -145,7 +145,7 @@ def read_excel(file):
 def clean_excel_data(df):
     try:
         df.replace('0', np.nan, inplace=True)
-        df.replace(r"\*+", np.nan, regex=True, inplace=True)
+        df.replace(r"\+", np.nan, regex=True, inplace=True)
         df.dropna(thresh=np.ceil(len(df.columns) * 0.75), axis=0, inplace=True)
         words_to_filter = ["Generated", "Branch", 'Opening']
         mask = ~df.apply(lambda row: row.astype(str).str.contains('|'.join(words_to_filter), case=False).any(), axis=1)
@@ -158,16 +158,30 @@ def clean_excel_data(df):
         st.error(f"Error cleaning Excel file: {e}")
         return None
 
-# Function to classify transactions
 def classify_transactions(dataframe, model_path):
     try:
         loaded_model = joblib.load(model_path)
         if 'Transaction Description' in dataframe.columns:
-            descriptions = dataframe['Transaction Description']
+            # Fill NaN values in descriptions
+            descriptions = dataframe['Transaction Description'].fillna('Unknown')
             predictions = loaded_model.predict(descriptions)
             dataframe['Predicted Category'] = predictions
-            if 'Credit' in dataframe.columns:
-                dataframe.loc[dataframe['Credit'] > 0, 'Predicted Category'] = 'Income'
+            
+            # Check for both Credit_X and Credit_Y columns and convert to numeric
+            if 'Credit_X' in dataframe.columns:
+                credit_column = 'Credit_X'
+            elif 'Credit_Y' in dataframe.columns:
+                credit_column = 'Credit_Y'
+            else:
+                credit_column = None  # No credit column available
+            
+            if credit_column:
+                # Convert the selected credit column to numeric, coercing errors
+                dataframe[credit_column] = pd.to_numeric(dataframe[credit_column], errors='coerce')
+                
+                # Now perform the comparison
+                dataframe.loc[dataframe[credit_column] > 0, 'Predicted Category'] = 'Income'
+                
             return dataframe[['Transaction Description', 'Predicted Category']]
         else:
             st.error("Error: 'Transaction Description' column missing in dataframe.")
@@ -236,14 +250,18 @@ if uploaded_file:
         df_cleaned = clean_excel_data(df)
         if df is not None:
             ##Invoke model with df_cleaned
-            model_path = "trained_model_balanced.joblib"
+            model_path = r"C:\Users\ashpa\OneDrive\Desktop\project\trained_model_balanced.joblib"
             if not os.path.exists(model_path):
                 st.error("Error: Trained model not found.")
 
             renaming_rules = {
                 "Transaction Description": ["Narration", "Description"],
                 "Credit": ["Credit", "Deposit"],
-                "Debit": ["Debit", "Withdrawal"]
+                "Debit": ["Debit", "Withdrawal"],
+                "Date":["Txn Date","date"],
+                'Closing Balance':['Balance'],
+                'Value Dt':['Value Date'],
+                'Chq./Ref.No.':['Ref No./Cheque No.']
             }
 
             # Create renaming dictionary in a single loop
@@ -257,20 +275,30 @@ if uploaded_file:
             # Apply renaming
             df_cleaned = df_cleaned.rename(columns=rename_dict)
 
+            # After invoking classify_transactions
             df_predicted = classify_transactions(df_cleaned[['Transaction Description', 'Credit']], model_path)
-            df_cleaned = df_cleaned.merge(df_predicted, on="Transaction Description", how="left")
-            df_cleaned['Reviewed Category'] = df_cleaned['Predicted Category']  # Will be equated with Predicted Category column.
 
-            # Creating month and year columns from Date:
+            # Check if 'Predicted Category' exists before merging
+            if 'Predicted Category' in df_predicted.columns:
+                df_cleaned = df_cleaned.merge(df_predicted, on="Transaction Description", how="left")
+                df_cleaned['Reviewed Category'] = df_cleaned['Predicted Category']
+            else:
+                st.warning("Transaction classification failed. Using default categories.")
+                df_cleaned['Reviewed Category'] = 'Uncategorized'  # Default category
+
+
+           # Identify the column that contains date values
             date_col = next((col for col in df_cleaned.columns if 'Date' in col), None)
             if date_col:
                 # Convert to datetime format
                 df_cleaned["Transaction Year"] = pd.to_datetime(df_cleaned[date_col], format="%d/%m/%y").dt.year
                 df_cleaned["Transaction Month"] = pd.to_datetime(df_cleaned[date_col], format="%d/%m/%y").dt.strftime("%B")
 
+
+
             # Code to let user change category:
             editable_column = "Reviewed Category"
-            category_options = ["Savings", "Wants", "Needs"]
+            category_options = ["Income","Savings", "Wants", "Needs"]
 
             # Dynamically configure columns: All read-only except the editable one
             column_config = {col: st.column_config.TextColumn(col, disabled=True) for col in df_cleaned.columns}
