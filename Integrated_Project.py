@@ -34,7 +34,7 @@ def add_bg_from_url():
             max-width: 200%;
         }
         .stApp {
-            background: url("https://source.unsplash.com/1600x900/?finance,stocks,money") no-repeat center fixed;
+            background: url("https://unsplash.com/photos/a-blue-wallet-sitting-on-top-of-a-pile-of-coins-K2N0Cw-MDvo") no-repeat center fixed;
             background-size: cover;
         }
         .css-18e3th9 {
