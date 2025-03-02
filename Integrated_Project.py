@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -250,7 +251,7 @@ if uploaded_file:
         df_cleaned = clean_excel_data(df)
         if df is not None:
             ##Invoke model with df_cleaned
-            model_path = "trained_model_balanced.joblib"
+            model_path = r"C:\Users\ashpa\OneDrive\Desktop\project\trained_model.pkl"
             if not os.path.exists(model_path):
                 st.error("Error: Trained model not found.")
 
@@ -285,7 +286,21 @@ if uploaded_file:
             else:
                 st.warning("Transaction classification failed. Using default categories.")
                 df_cleaned['Reviewed Category'] = 'Uncategorized'  # Default category
+            
+            # Remove rows where the difference in 'Closing Balance' is zero
+            if 'Closing Balance' in df_cleaned.columns:
+                # Convert 'Closing Balance' to numeric (if not already)
+                df_cleaned['Closing Balance'] = pd.to_numeric(df_cleaned['Closing Balance'], errors='coerce')
 
+                # Calculate the difference between consecutive rows in 'Closing Balance'
+                df_cleaned['Closing Balance Diff'] = df_cleaned['Closing Balance'].diff()
+
+                # Drop rows where the difference is zero
+                df_cleaned = df_cleaned[df_cleaned['Closing Balance Diff'] != 0]
+
+                # Drop the temporary 'Closing Balance Diff' column
+                df_cleaned = df_cleaned.drop(columns=['Closing Balance Diff'])
+            
 
            # Identify the column that contains date values
             date_col = next((col for col in df_cleaned.columns if 'Date' in col), None)
@@ -293,7 +308,6 @@ if uploaded_file:
                 # Convert to datetime format
                 df_cleaned["Transaction Year"] = pd.to_datetime(df_cleaned[date_col], format="%d/%m/%y").dt.year
                 df_cleaned["Transaction Month"] = pd.to_datetime(df_cleaned[date_col], format="%d/%m/%y").dt.strftime("%B")
-
 
 
             # Code to let user change category:
@@ -304,7 +318,7 @@ if uploaded_file:
             column_config = {col: st.column_config.TextColumn(col, disabled=True) for col in df_cleaned.columns}
             column_config[editable_column] = st.column_config.SelectboxColumn(editable_column, options=category_options)
 
-            st.subheader("Uploaded Data")
+            st.subheader("Categories Data")
             # Columns to hide:
             columns_to_hide = ["Transaction Year", "Transaction Month", 'Closing Balance', 'Value Dt', 'Chq./Ref.No.']
             # Display DataFrame with only one editable dropdown column
