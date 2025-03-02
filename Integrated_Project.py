@@ -173,6 +173,8 @@ def classify_transactions(dataframe, model_path):
                 credit_column = 'Credit_X'
             elif 'Credit_Y' in dataframe.columns:
                 credit_column = 'Credit_Y'
+            elif 'Credit' in dataframe.columns:
+                credit_column = 'Credit'
             else:
                 credit_column = None  # No credit column available
             
@@ -180,7 +182,7 @@ def classify_transactions(dataframe, model_path):
                 # Convert the selected credit column to numeric, coercing errors
                 dataframe[credit_column] = pd.to_numeric(dataframe[credit_column], errors='coerce')
                 
-                # Now perform the comparison
+                # Override predicted category to 'Income' if credit value > 0
                 dataframe.loc[dataframe[credit_column] > 0, 'Predicted Category'] = 'Income'
                 
             return dataframe[['Transaction Description', 'Predicted Category']]
